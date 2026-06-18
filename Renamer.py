@@ -1,433 +1,974 @@
-import tkinter as tk
-from tkinter import filedialog, messagebox, ttk
 import os
-import shutil
+import sys
+from pathlib import Path
+from typing import Optional
+
+from PySide6.QtCore import (
+    Qt, QObject, QSettings, QSize,
+)
+from PySide6.QtGui import (
+    QAction, QKeySequence, QFont,
+)
+from PySide6.QtWidgets import (
+    QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
+    QLabel, QPushButton, QLineEdit, QComboBox, QListWidget,
+    QListWidgetItem, QFileDialog, QMessageBox, QStatusBar,
+    QMenuBar, QMenu, QSizePolicy, QStyleFactory,
+    QGroupBox, QFrame, QToolBar, QStackedWidget, QSpinBox,
+)
+
+ORGANIZATION_NAME = "Danrex Corp"
+APPLICATION_NAME = "Danrex Renamer"
+APPLICATION_VERSION = "2.0.0"
+
+ACCENT_COLOR = "#0078D4"
+FONT_FAMILY = "Segoe UI"
+MONOSPACE_FONT = "Consolas"
+BASE_FONT_SIZE = 9
+
+DARK_STYLE = f"""
+QWidget {{
+    font-family: "{FONT_FAMILY}";
+    font-size: {BASE_FONT_SIZE}pt;
+    color: #cccccc;
+}}
+QMainWindow, QDialog {{
+    background-color: #1e1e1e;
+}}
+QMenuBar {{
+    background-color: #2d2d2d;
+    color: #cccccc;
+    border-bottom: 1px solid #3e3e3e;
+    padding: 0;
+    spacing: 0;
+}}
+QMenuBar::item {{
+    padding: 5px 10px;
+    background: transparent;
+}}
+QMenuBar::item:selected {{
+    background-color: #3e3e3e;
+}}
+QMenuBar::item:pressed {{
+    background-color: #094771;
+}}
+QMenu {{
+    background-color: #2d2d2d;
+    color: #cccccc;
+    border: 1px solid #3e3e3e;
+    padding: 2px;
+}}
+QMenu::item {{
+    padding: 5px 28px 5px 18px;
+}}
+QMenu::item:selected {{
+    background-color: #094771;
+    color: #ffffff;
+}}
+QMenu::separator {{
+    height: 1px;
+    background: #3e3e3e;
+    margin: 3px 8px;
+}}
+QToolBar {{
+    background-color: #252526;
+    border-bottom: 1px solid #3e3e3e;
+    spacing: 2px;
+    padding: 2px 4px;
+}}
+QToolBar::separator {{
+    width: 1px;
+    background: #3e3e3e;
+    margin: 3px 3px;
+}}
+QToolButton {{
+    background-color: transparent;
+    color: #cccccc;
+    border: none;
+    padding: 4px 10px;
+    margin: 1px;
+}}
+QToolButton:hover {{
+    background-color: #3e3e3e;
+}}
+QToolButton:pressed {{
+    background-color: #094771;
+}}
+QGroupBox {{
+    color: #cccccc;
+    font-weight: bold;
+    border: 1px solid #3e3e3e;
+    background-color: #252526;
+    margin-top: 14px;
+    padding-top: 14px;
+}}
+QGroupBox::title {{
+    subcontrol-origin: margin;
+    subcontrol-position: top left;
+    left: 10px;
+    top: 0px;
+    padding: 0 4px;
+    color: #8fc9ff;
+    background-color: #252526;
+}}
+QListWidget {{
+    background-color: #1e1e1e;
+    color: #cccccc;
+    border: 1px solid #3e3e3e;
+    outline: none;
+    font-family: "{MONOSPACE_FONT}";
+    font-size: {BASE_FONT_SIZE}pt;
+}}
+QListWidget::item {{
+    padding: 3px 6px;
+    border: none;
+}}
+QListWidget::item:selected {{
+    background-color: #094771;
+    color: #ffffff;
+}}
+QListWidget::item:hover:!selected {{
+    background-color: #2a2d2e;
+}}
+QLineEdit {{
+    background-color: #1e1e1e;
+    color: #cccccc;
+    border: 1px solid #3e3e3e;
+    padding: 4px 8px;
+    min-height: 22px;
+}}
+QLineEdit:focus {{
+    border-color: {ACCENT_COLOR};
+}}
+QLineEdit:read-only {{
+    background-color: #252526;
+    color: #888888;
+}}
+QComboBox {{
+    background-color: #3a3a3a;
+    color: #cccccc;
+    border: 1px solid #555555;
+    padding: 4px 8px;
+    min-height: 22px;
+}}
+QComboBox:hover {{
+    border-color: #666666;
+}}
+QComboBox::drop-down {{
+    border: none;
+    width: 20px;
+}}
+QComboBox QAbstractItemView {{
+    background-color: #2d2d2d;
+    color: #cccccc;
+    selection-background-color: #094771;
+    border: 1px solid #3e3e3e;
+    outline: none;
+}}
+QSpinBox {{
+    background-color: #1e1e1e;
+    color: #cccccc;
+    border: 1px solid #3e3e3e;
+    padding: 4px 8px;
+    min-height: 22px;
+}}
+QSpinBox:focus {{
+    border-color: {ACCENT_COLOR};
+}}
+QPushButton {{
+    background-color: #3a3a3a;
+    color: #cccccc;
+    border: 1px solid #555555;
+    padding: 4px 14px;
+    min-height: 22px;
+}}
+QPushButton:hover {{
+    background-color: #4a4a4a;
+    border-color: #666666;
+}}
+QPushButton:pressed {{
+    background-color: #2a2a2a;
+}}
+QPushButton:disabled {{
+    background-color: #2d2d2d;
+    color: #555555;
+    border-color: #3a3a3a;
+}}
+QPushButton#AccentButton {{
+    background-color: {ACCENT_COLOR};
+    color: #ffffff;
+    border: none;
+    font-weight: bold;
+    padding: 5px 18px;
+    min-height: 26px;
+}}
+QPushButton#AccentButton:hover {{
+    background-color: #1a8ad4;
+}}
+QPushButton#AccentButton:pressed {{
+    background-color: #006cbe;
+}}
+QPushButton#AccentButton:disabled {{
+    background-color: #2a4a6a;
+    color: #666666;
+}}
+QStatusBar {{
+    background-color: #2d2d2d;
+    color: #cccccc;
+    border-top: 1px solid #3e3e3e;
+    padding: 0 8px;
+    min-height: 20px;
+    max-height: 20px;
+}}
+QStatusBar::item {{
+    border: none;
+}}
+QStatusBar QLabel {{
+    color: #cccccc;
+    font-size: 8pt;
+    padding: 0;
+    background: transparent;
+}}
+QLabel {{
+    color: #cccccc;
+    background: transparent;
+}}
+QLabel#TitleLabel {{
+    font-size: 16pt;
+    font-weight: 300;
+    color: #e0e0e0;
+}}
+QLabel#SubtitleLabel {{
+    font-size: 8pt;
+    color: #888888;
+}}
+QFrame#TopLine {{
+    background-color: {ACCENT_COLOR};
+    max-height: 2px;
+}}
+"""
+
+LIGHT_STYLE = f"""
+QWidget {{
+    font-family: "{FONT_FAMILY}";
+    font-size: {BASE_FONT_SIZE}pt;
+    color: #1e1e1e;
+}}
+QMainWindow, QDialog {{
+    background-color: #f0f0f0;
+}}
+QMenuBar {{
+    background-color: #ffffff;
+    color: #1e1e1e;
+    border-bottom: 1px solid #d0d0d0;
+    padding: 0;
+    spacing: 0;
+}}
+QMenuBar::item {{
+    padding: 5px 10px;
+    background: transparent;
+}}
+QMenuBar::item:selected {{
+    background-color: #e5e5e5;
+}}
+QMenuBar::item:pressed {{
+    background-color: #cce4f7;
+}}
+QMenu {{
+    background-color: #ffffff;
+    color: #1e1e1e;
+    border: 1px solid #c0c0c0;
+    padding: 2px;
+}}
+QMenu::item {{
+    padding: 5px 28px 5px 18px;
+}}
+QMenu::item:selected {{
+    background-color: #cce4f7;
+    color: #1e1e1e;
+}}
+QMenu::separator {{
+    height: 1px;
+    background: #e0e0e0;
+    margin: 3px 8px;
+}}
+QToolBar {{
+    background-color: #fafafa;
+    border-bottom: 1px solid #d0d0d0;
+    spacing: 2px;
+    padding: 2px 4px;
+}}
+QToolBar::separator {{
+    width: 1px;
+    background: #d0d0d0;
+    margin: 3px 3px;
+}}
+QToolButton {{
+    background-color: transparent;
+    color: #1e1e1e;
+    border: none;
+    padding: 4px 10px;
+    margin: 1px;
+}}
+QToolButton:hover {{
+    background-color: #e5e5e5;
+}}
+QToolButton:pressed {{
+    background-color: #cce4f7;
+}}
+QGroupBox {{
+    color: #1e1e1e;
+    font-weight: bold;
+    border: 1px solid #c8c8c8;
+    background-color: #ffffff;
+    margin-top: 14px;
+    padding-top: 14px;
+}}
+QGroupBox::title {{
+    subcontrol-origin: margin;
+    subcontrol-position: top left;
+    left: 10px;
+    top: 0px;
+    padding: 0 4px;
+    color: {ACCENT_COLOR};
+    background-color: #ffffff;
+}}
+QListWidget {{
+    background-color: #ffffff;
+    color: #1e1e1e;
+    border: 1px solid #c8c8c8;
+    outline: none;
+    font-family: "{MONOSPACE_FONT}";
+    font-size: {BASE_FONT_SIZE}pt;
+}}
+QListWidget::item {{
+    padding: 3px 6px;
+    border: none;
+}}
+QListWidget::item:selected {{
+    background-color: #cce4f7;
+    color: #1e1e1e;
+}}
+QListWidget::item:hover:!selected {{
+    background-color: #f0f0f0;
+}}
+QLineEdit {{
+    background-color: #ffffff;
+    color: #1e1e1e;
+    border: 1px solid #adadad;
+    padding: 4px 8px;
+    min-height: 22px;
+}}
+QLineEdit:focus {{
+    border-color: {ACCENT_COLOR};
+}}
+QLineEdit:read-only {{
+    background-color: #f5f5f5;
+    color: #888888;
+}}
+QComboBox {{
+    background-color: #ffffff;
+    color: #1e1e1e;
+    border: 1px solid #adadad;
+    padding: 4px 8px;
+    min-height: 22px;
+}}
+QComboBox:hover {{
+    border-color: #999999;
+}}
+QComboBox::drop-down {{
+    border: none;
+    width: 20px;
+}}
+QComboBox QAbstractItemView {{
+    background-color: #ffffff;
+    color: #1e1e1e;
+    selection-background-color: #cce4f7;
+    border: 1px solid #c0c0c0;
+    outline: none;
+}}
+QSpinBox {{
+    background-color: #ffffff;
+    color: #1e1e1e;
+    border: 1px solid #adadad;
+    padding: 4px 8px;
+    min-height: 22px;
+}}
+QSpinBox:focus {{
+    border-color: {ACCENT_COLOR};
+}}
+QPushButton {{
+    background-color: #ffffff;
+    color: #1e1e1e;
+    border: 1px solid #adadad;
+    padding: 4px 14px;
+    min-height: 22px;
+}}
+QPushButton:hover {{
+    background-color: #e9e9e9;
+    border-color: #999999;
+}}
+QPushButton:pressed {{
+    background-color: #d9d9d9;
+}}
+QPushButton:disabled {{
+    background-color: #f5f5f5;
+    color: #aaaaaa;
+    border-color: #d0d0d0;
+}}
+QPushButton#AccentButton {{
+    background-color: {ACCENT_COLOR};
+    color: #ffffff;
+    border: none;
+    font-weight: bold;
+    padding: 5px 18px;
+    min-height: 26px;
+}}
+QPushButton#AccentButton:hover {{
+    background-color: #1a8ad4;
+}}
+QPushButton#AccentButton:pressed {{
+    background-color: #006cbe;
+}}
+QPushButton#AccentButton:disabled {{
+    background-color: #a8cce8;
+    color: #ffffff;
+}}
+QStatusBar {{
+    background-color: #ffffff;
+    color: #1e1e1e;
+    border-top: 1px solid #d0d0d0;
+    padding: 0 8px;
+    min-height: 20px;
+    max-height: 20px;
+}}
+QStatusBar::item {{
+    border: none;
+}}
+QStatusBar QLabel {{
+    color: #1e1e1e;
+    font-size: 8pt;
+    padding: 0;
+    background: transparent;
+}}
+QLabel {{
+    color: #1e1e1e;
+    background: transparent;
+}}
+QLabel#TitleLabel {{
+    font-size: 16pt;
+    font-weight: 300;
+    color: #1e1e1e;
+}}
+QLabel#SubtitleLabel {{
+    font-size: 8pt;
+    color: #888888;
+}}
+QFrame#TopLine {{
+    background-color: {ACCENT_COLOR};
+    max-height: 2px;
+}}
+"""
+
+RENAME_MODES = [
+    "Добавить префикс",
+    "Добавить суффикс",
+    "Заменить текст",
+    "Нумерация",
+    "Удалить символы",
+]
 
 
-class DanrexRenamer:
-    def __init__(self, root):
-        self.root = root
-        self.root.title("Danrex Renamer")
-        self.root.geometry("650x650")
-        self.root.minsize(650, 650)
-        self.root.configure(bg='#0a0a0a')
+class RenameLogic(QObject):
 
-        self.colors = {
-            'bg': '#0a0a0a',
-            'bg_secondary': '#141414',
-            'bg_tertiary': '#1a1a1a',
-            'fg': '#ffffff',
-            'fg_secondary': '#a0a0a0',
-            'accent': '#00ff88',
-            'accent_dark': '#00cc6a',
-            'border': '#2a2a2a',
-            'error': '#ff4444',
-            'warning': '#ffaa00'
-        }
+    @staticmethod
+    def scan_files(folder_path: str) -> list[str]:
+        files = []
+        try:
+            for entry in os.scandir(folder_path):
+                if entry.is_file():
+                    files.append(entry.name)
+        except OSError:
+            pass
+        files.sort()
+        return files
 
-        self.current_folder = ""
-        self.files = []
-        self.preview_data = []
-
-        self.center_window()
-        self.create_widgets()
-
-    def center_window(self):
-        self.root.update_idletasks()
-        width = self.root.winfo_width()
-        height = self.root.winfo_height()
-        x = (self.root.winfo_screenwidth() // 2) - (width // 2)
-        y = (self.root.winfo_screenheight() // 2) - (height // 2)
-        self.root.geometry(f'{width}x{height}+{x}+{y}')
-
-    def create_widgets(self):
-        main_frame = tk.Frame(self.root, bg=self.colors['bg'])
-        main_frame.pack(fill=tk.BOTH, expand=True, padx=20, pady=20)
-
-        top_line = tk.Frame(main_frame, bg=self.colors['accent'], height=2)
-        top_line.pack(fill=tk.X, pady=(0, 20))
-
-        title_label = tk.Label(main_frame, text="✏️ Danrex Renamer",
-                               font=('Segoe UI', 20, 'bold'),
-                               bg=self.colors['bg'], fg=self.colors['accent'])
-        title_label.pack(anchor=tk.W, pady=(0, 5))
-
-        subtitle_label = tk.Label(main_frame, text="Массовое переименование файлов",
-                                  font=('Segoe UI', 10),
-                                  bg=self.colors['bg'], fg=self.colors['fg_secondary'])
-        subtitle_label.pack(anchor=tk.W, pady=(0, 20))
-
-        folder_frame = tk.Frame(main_frame, bg=self.colors['bg_secondary'],
-                                relief=tk.FLAT, bd=1, highlightbackground=self.colors['border'],
-                                highlightthickness=1)
-        folder_frame.pack(fill=tk.X, pady=(0, 15))
-
-        folder_inner = tk.Frame(folder_frame, bg=self.colors['bg_secondary'])
-        folder_inner.pack(fill=tk.BOTH, expand=True, padx=15, pady=15)
-
-        folder_label = tk.Label(folder_inner, text="📁 Выберите папку",
-                                font=('Segoe UI', 10, 'bold'),
-                                bg=self.colors['bg_secondary'], fg=self.colors['fg'])
-        folder_label.pack(anchor=tk.W, pady=(0, 10))
-
-        folder_controls = tk.Frame(folder_inner, bg=self.colors['bg_secondary'])
-        folder_controls.pack(fill=tk.X)
-
-        self.folder_path_var = tk.StringVar()
-        self.folder_path_var.set("Папка не выбрана")
-        self.folder_entry = tk.Entry(folder_controls, textvariable=self.folder_path_var,
-                                     font=('Segoe UI', 10), bg=self.colors['bg_tertiary'],
-                                     fg=self.colors['fg_secondary'], relief=tk.FLAT,
-                                     state='readonly', readonlybackground=self.colors['bg_tertiary'])
-        self.folder_entry.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 10))
-
-        self.browse_btn = tk.Button(folder_controls, text="Обзор", command=self.select_folder,
-                                    cursor="hand2", bg=self.colors['accent'], fg='#0a0a0a',
-                                    font=('Segoe UI', 9, 'bold'), relief=tk.FLAT, padx=15, pady=5)
-        self.browse_btn.pack(side=tk.RIGHT)
-
-        mode_frame = tk.Frame(main_frame, bg=self.colors['bg_secondary'],
-                              relief=tk.FLAT, bd=1, highlightbackground=self.colors['border'],
-                              highlightthickness=1)
-        mode_frame.pack(fill=tk.X, pady=(0, 15))
-
-        mode_inner = tk.Frame(mode_frame, bg=self.colors['bg_secondary'])
-        mode_inner.pack(fill=tk.BOTH, expand=True, padx=15, pady=15)
-
-        mode_label = tk.Label(mode_inner, text="🎯 Режим переименования",
-                              font=('Segoe UI', 10, 'bold'),
-                              bg=self.colors['bg_secondary'], fg=self.colors['fg'])
-        mode_label.pack(anchor=tk.W, pady=(0, 10))
-
-        self.mode_var = tk.StringVar(value="Добавить префикс")
-        self.mode_menu = ttk.Combobox(mode_inner, textvariable=self.mode_var,
-                                      values=["Добавить префикс", "Добавить суффикс", "Заменить текст",
-                                              "Нумерация", "Удалить символы"],
-                                      state="readonly", font=('Segoe UI', 10))
-        self.mode_menu.pack(fill=tk.X)
-        self.mode_menu.bind('<<ComboboxSelected>>', self.on_mode_change)
-
-        self.value_frame = tk.Frame(mode_inner, bg=self.colors['bg_secondary'])
-        self.value_frame.pack(fill=tk.X, pady=(10, 0))
-
-        self.create_value_inputs()
-
-        preview_frame = tk.Frame(main_frame, bg=self.colors['bg_secondary'],
-                                 relief=tk.FLAT, bd=1, highlightbackground=self.colors['border'],
-                                 highlightthickness=1)
-        preview_frame.pack(fill=tk.BOTH, expand=True, pady=(0, 15))
-
-        preview_header = tk.Frame(preview_frame, bg=self.colors['bg_secondary'])
-        preview_header.pack(fill=tk.X, padx=15, pady=(15, 5))
-
-        preview_title = tk.Label(preview_header, text="📋 Предпросмотр",
-                                 font=('Segoe UI', 10, 'bold'),
-                                 bg=self.colors['bg_secondary'], fg=self.colors['fg'])
-        preview_title.pack(side=tk.LEFT)
-
-        preview_count = tk.Label(preview_header, text="0 файлов",
-                                 font=('Segoe UI', 9),
-                                 bg=self.colors['bg_secondary'], fg=self.colors['accent'])
-        preview_count.pack(side=tk.RIGHT)
-        self.preview_count_label = preview_count
-
-        preview_container = tk.Frame(preview_frame, bg=self.colors['bg'])
-        preview_container.pack(fill=tk.BOTH, expand=True, padx=15, pady=(0, 15))
-
-        scrollbar = tk.Scrollbar(preview_container)
-        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
-
-        self.preview_listbox = tk.Listbox(preview_container, bg=self.colors['bg_tertiary'],
-                                          fg=self.colors['fg'], selectbackground=self.colors['accent'],
-                                          font=('Consolas', 9), relief=tk.FLAT,
-                                          yscrollcommand=scrollbar.set)
-        self.preview_listbox.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-        scrollbar.config(command=self.preview_listbox.yview)
-
-        button_frame = tk.Frame(main_frame, bg=self.colors['bg'])
-        button_frame.pack(fill=tk.X, pady=(0, 10))
-
-        self.preview_btn = tk.Button(button_frame, text="👁️ Предпросмотр", command=self.preview,
-                                     cursor="hand2", bg=self.colors['bg_secondary'], fg=self.colors['accent'],
-                                     font=('Segoe UI', 10, 'bold'), relief=tk.FLAT, bd=1,
-                                     highlightbackground=self.colors['border'], highlightthickness=1,
-                                     padx=20, pady=8)
-        self.preview_btn.pack(side=tk.LEFT, expand=True, fill=tk.X, padx=(0, 10))
-
-        self.rename_btn = tk.Button(button_frame, text="🔄 Переименовать", command=self.rename_files,
-                                    cursor="hand2", bg=self.colors['accent'], fg='#0a0a0a',
-                                    font=('Segoe UI', 10, 'bold'), relief=tk.FLAT,
-                                    padx=20, pady=8, state=tk.DISABLED)
-        self.rename_btn.pack(side=tk.RIGHT, expand=True, fill=tk.X)
-
-        status_bar = tk.Frame(main_frame, bg=self.colors['bg_secondary'], height=35)
-        status_bar.pack(fill=tk.X)
-
-        self.status_emoji = tk.Label(status_bar, text="✅", font=('Segoe UI', 11),
-                                     bg=self.colors['bg_secondary'], fg=self.colors['accent'])
-        self.status_emoji.pack(side=tk.LEFT, padx=(15, 10))
-
-        self.status_label = tk.Label(status_bar, text="Готов к работе",
-                                     font=('Segoe UI', 9),
-                                     bg=self.colors['bg_secondary'], fg=self.colors['fg'])
-        self.status_label.pack(side=tk.LEFT)
-
-    def create_value_inputs(self):
-        for widget in self.value_frame.winfo_children():
-            widget.destroy()
-
-        mode = self.mode_var.get()
-
-        if mode == "Добавить префикс":
-            tk.Label(self.value_frame, text="Префикс:", bg=self.colors['bg_secondary'],
-                     fg=self.colors['fg'], font=('Segoe UI', 9)).pack(anchor=tk.W)
-            self.value_entry = tk.Entry(self.value_frame, font=('Segoe UI', 10),
-                                        bg=self.colors['bg_tertiary'], fg=self.colors['fg'],
-                                        relief=tk.FLAT, insertbackground=self.colors['accent'])
-            self.value_entry.pack(fill=tk.X, pady=(5, 0))
-
-        elif mode == "Добавить суффикс":
-            tk.Label(self.value_frame, text="Суффикс:", bg=self.colors['bg_secondary'],
-                     fg=self.colors['fg'], font=('Segoe UI', 9)).pack(anchor=tk.W)
-            self.value_entry = tk.Entry(self.value_frame, font=('Segoe UI', 10),
-                                        bg=self.colors['bg_tertiary'], fg=self.colors['fg'],
-                                        relief=tk.FLAT, insertbackground=self.colors['accent'])
-            self.value_entry.pack(fill=tk.X, pady=(5, 0))
-
-        elif mode == "Заменить текст":
-            tk.Label(self.value_frame, text="Что заменить:", bg=self.colors['bg_secondary'],
-                     fg=self.colors['fg'], font=('Segoe UI', 9)).pack(anchor=tk.W)
-            self.find_entry = tk.Entry(self.value_frame, font=('Segoe UI', 10),
-                                       bg=self.colors['bg_tertiary'], fg=self.colors['fg'],
-                                       relief=tk.FLAT, insertbackground=self.colors['accent'])
-            self.find_entry.pack(fill=tk.X, pady=(5, 5))
-
-            tk.Label(self.value_frame, text="Заменить на:", bg=self.colors['bg_secondary'],
-                     fg=self.colors['fg'], font=('Segoe UI', 9)).pack(anchor=tk.W)
-            self.replace_entry = tk.Entry(self.value_frame, font=('Segoe UI', 10),
-                                          bg=self.colors['bg_tertiary'], fg=self.colors['fg'],
-                                          relief=tk.FLAT, insertbackground=self.colors['accent'])
-            self.replace_entry.pack(fill=tk.X, pady=(5, 0))
-
-        elif mode == "Нумерация":
-            number_frame = tk.Frame(self.value_frame, bg=self.colors['bg_secondary'])
-            number_frame.pack(fill=tk.X)
-
-            tk.Label(number_frame, text="Начальный номер:", bg=self.colors['bg_secondary'],
-                     fg=self.colors['fg'], font=('Segoe UI', 9)).pack(anchor=tk.W)
-            self.start_number = tk.Entry(number_frame, font=('Segoe UI', 10),
-                                         bg=self.colors['bg_tertiary'], fg=self.colors['fg'],
-                                         relief=tk.FLAT, insertbackground=self.colors['accent'])
-            self.start_number.pack(fill=tk.X, pady=(5, 5))
-            self.start_number.insert(0, "1")
-
-            tk.Label(number_frame, text="Формат (например: 001, file_01):", bg=self.colors['bg_secondary'],
-                     fg=self.colors['fg'], font=('Segoe UI', 9)).pack(anchor=tk.W)
-            self.number_format = tk.Entry(number_frame, font=('Segoe UI', 10),
-                                          bg=self.colors['bg_tertiary'], fg=self.colors['fg'],
-                                          relief=tk.FLAT, insertbackground=self.colors['accent'])
-            self.number_format.pack(fill=tk.X, pady=(5, 0))
-            self.number_format.insert(0, "001")
-
-        elif mode == "Удалить символы":
-            range_frame = tk.Frame(self.value_frame, bg=self.colors['bg_secondary'])
-            range_frame.pack(fill=tk.X)
-
-            tk.Label(range_frame, text="Начать с позиции (1 - первая буква):", bg=self.colors['bg_secondary'],
-                     fg=self.colors['fg'], font=('Segoe UI', 9)).pack(anchor=tk.W)
-            self.start_pos = tk.Entry(range_frame, font=('Segoe UI', 10),
-                                      bg=self.colors['bg_tertiary'], fg=self.colors['fg'],
-                                      relief=tk.FLAT, insertbackground=self.colors['accent'])
-            self.start_pos.pack(fill=tk.X, pady=(5, 5))
-            self.start_pos.insert(0, "1")
-
-            tk.Label(range_frame, text="Закончить на позиции:", bg=self.colors['bg_secondary'],
-                     fg=self.colors['fg'], font=('Segoe UI', 9)).pack(anchor=tk.W)
-            self.end_pos = tk.Entry(range_frame, font=('Segoe UI', 10),
-                                    bg=self.colors['bg_tertiary'], fg=self.colors['fg'],
-                                    relief=tk.FLAT, insertbackground=self.colors['accent'])
-            self.end_pos.pack(fill=tk.X, pady=(5, 0))
-
-    def on_mode_change(self, event=None):
-        self.create_value_inputs()
-        if self.current_folder:
-            self.preview()
-
-    def select_folder(self):
-        folder = filedialog.askdirectory()
-        if folder:
-            self.current_folder = folder
-            self.folder_path_var.set(folder)
-            self.scan_files()
-            self.rename_btn.config(state=tk.NORMAL)
-            self.preview()
-
-    def scan_files(self):
-        self.files = []
-        if self.current_folder:
-            for filename in os.listdir(self.current_folder):
-                filepath = os.path.join(self.current_folder, filename)
-                if os.path.isfile(filepath):
-                    self.files.append(filename)
-            self.files.sort()
-        self.update_status(f"Найдено файлов: {len(self.files)}", is_success=True)
-
-    def get_new_name(self, old_name, index=None):
+    @staticmethod
+    def get_new_name(old_name: str, mode: str, params: dict, index: int = 0) -> str:
         name, ext = os.path.splitext(old_name)
-        mode = self.mode_var.get()
 
         if mode == "Добавить префикс":
-            prefix = self.get_entry_value()
-            return prefix + old_name
+            return params.get("prefix", "") + old_name
 
         elif mode == "Добавить суффикс":
-            suffix = self.get_entry_value()
-            return name + suffix + ext
+            return name + params.get("suffix", "") + ext
 
         elif mode == "Заменить текст":
-            find_text = self.find_entry.get().strip()
-            replace_text = self.replace_entry.get().strip()
+            find_text = params.get("find", "")
+            replace_text = params.get("replace", "")
             if find_text:
                 return old_name.replace(find_text, replace_text)
             return old_name
 
         elif mode == "Нумерация":
-            try:
-                start = int(self.start_number.get().strip() if self.start_number.get().strip() else "1")
-                fmt = self.number_format.get().strip() if self.number_format.get().strip() else "001"
-                num = start + (index if index is not None else 0)
-
-                if fmt.isdigit():
-                    num_str = str(num).zfill(len(fmt))
-                else:
-                    if '#' in fmt:
-                        num_str = fmt.replace('#', str(num))
-                    else:
-                        num_str = f"{fmt}{num}"
-
-                return f"{num_str}{ext}"
-            except:
-                return f"{index + 1}{ext}"
+            start = params.get("start", 1)
+            fmt = params.get("format", "001")
+            num = start + index
+            if fmt.isdigit():
+                num_str = str(num).zfill(len(fmt))
+            else:
+                num_str = f"{fmt}{num}"
+            return f"{num_str}{ext}"
 
         elif mode == "Удалить символы":
-            try:
-                start = int(self.start_pos.get().strip()) - 1
-                end = int(self.end_pos.get().strip())
-                if start < 0:
-                    start = 0
-                if end > len(name):
-                    end = len(name)
-                new_name = name[:start] + name[end:]
-                return new_name + ext if new_name else old_name
-            except:
-                return old_name
+            start = params.get("start_pos", 1) - 1
+            end = params.get("end_pos", 0)
+            if start < 0:
+                start = 0
+            if end > len(name):
+                end = len(name)
+            new_name = name[:start] + name[end:]
+            return new_name + ext if new_name else old_name
 
         return old_name
 
-    def get_entry_value(self):
-        try:
-            return self.value_entry.get().strip()
-        except:
-            return ""
-
-    def preview(self):
-        if not self.current_folder:
-            messagebox.showwarning("Предупреждение", "Сначала выберите папку!")
-            return
-
-        mode = self.mode_var.get()
-
-        if mode in ["Добавить префикс", "Добавить суффикс"]:
-            if not self.get_entry_value():
-                messagebox.showwarning("Предупреждение", "Введите значение!")
-                return
-
-        if mode == "Заменить текст":
-            if not self.find_entry.get().strip():
-                messagebox.showwarning("Предупреждение", "Введите текст для замены!")
-                return
-
-        if mode == "Нумерация":
-            if not self.start_number.get().strip():
-                messagebox.showwarning("Предупреждение", "Введите начальный номер!")
-                return
-
-        self.preview_listbox.delete(0, tk.END)
-        self.preview_data = []
-
-        for idx, old_name in enumerate(self.files):
-            new_name = self.get_new_name(old_name, idx)
-            self.preview_data.append((old_name, new_name))
-            self.preview_listbox.insert(tk.END, f"{old_name}  →  {new_name}")
-
-        self.preview_count_label.config(text=f"{len(self.files)} файлов")
-        self.update_status(f"Предпросмотр: {len(self.files)} файлов", is_success=True)
-
-    def get_unique_filename(self, folder, filename, counter=1):
+    @staticmethod
+    def get_unique_filename(folder_path: str, filename: str) -> str:
         name, ext = os.path.splitext(filename)
+        counter = 1
         new_filename = filename
-
-        if counter > 1:
-            new_filename = f"{name}_copy{counter - 1}{ext}"
-
-        if os.path.exists(os.path.join(folder, new_filename)):
-            return self.get_unique_filename(folder, filename, counter + 1)
+        while os.path.exists(os.path.join(folder_path, new_filename)):
+            new_filename = f"{name}_{counter}{ext}"
+            counter += 1
         return new_filename
 
-    def rename_files(self):
-        if not self.preview_data:
-            messagebox.showwarning("Предупреждение", "Сначала выполните предпросмотр!")
-            return
-
-        if not messagebox.askyesno("Подтверждение", f"Переименовать {len(self.files)} файлов?"):
-            return
-
+    @staticmethod
+    def rename_files(folder_path: str, preview_data: list[tuple[str, str]]) -> tuple[int, int]:
         renamed = 0
         errors = 0
-
-        for old_name, new_name in self.preview_data:
-            old_path = os.path.join(self.current_folder, old_name)
-            new_path = os.path.join(self.current_folder, new_name)
-
+        for old_name, new_name in preview_data:
             if old_name == new_name:
                 continue
-
+            old_path = os.path.join(folder_path, old_name)
+            new_path = os.path.join(folder_path, new_name)
             if os.path.exists(new_path):
-                new_name = self.get_unique_filename(self.current_folder, new_name)
-                new_path = os.path.join(self.current_folder, new_name)
-
+                new_name = RenameLogic.get_unique_filename(folder_path, new_name)
+                new_path = os.path.join(folder_path, new_name)
             try:
                 os.rename(old_path, new_path)
                 renamed += 1
-            except Exception as e:
+            except OSError:
                 errors += 1
+        return renamed, errors
 
-        self.update_status(f"Переименовано: {renamed}, Ошибок: {errors}",
-                           is_success=errors == 0)
+
+class ThemeController:
+    LIGHT = "light"
+    DARK = "dark"
+    SYSTEM = "system"
+
+    @staticmethod
+    def _is_system_dark() -> bool:
+        if sys.platform != "win32":
+            return False
+        try:
+            import winreg
+            key = winreg.OpenKey(
+                winreg.HKEY_CURRENT_USER,
+                r"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize",
+            )
+            value, _ = winreg.QueryValueEx(key, "AppsUseLightTheme")
+            winreg.CloseKey(key)
+            return value == 0
+        except Exception:
+            return False
+
+    @staticmethod
+    def apply_theme(app: QApplication, theme_name: str) -> None:
+        if theme_name == ThemeController.DARK:
+            app.setStyleSheet(DARK_STYLE)
+        elif theme_name == ThemeController.LIGHT:
+            app.setStyleSheet(LIGHT_STYLE)
+        else:
+            sheet = DARK_STYLE if ThemeController._is_system_dark() else LIGHT_STYLE
+            app.setStyleSheet(sheet)
+
+
+class DanrexRenamerWindow(QMainWindow):
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.qsettings = QSettings(ORGANIZATION_NAME, APPLICATION_NAME)
+        self.current_folder: str = ""
+        self.files: list[str] = []
+        self.preview_data: list[tuple[str, str]] = []
+        self.theme: str = self.qsettings.value("theme", ThemeController.SYSTEM)
+
+        self.setWindowTitle(APPLICATION_NAME)
+        self.setMinimumSize(640, 600)
+
+        self._build_actions()
+        self._build_menubar()
+        self._build_central()
+        self._build_statusbar()
+
+        self._restore_geometry()
+        self._apply_theme()
+        self._sync_theme_actions()
+
+    def _build_actions(self) -> None:
+        self.act_open = QAction("&Выбрать папку...", self)
+        self.act_open.setShortcut(QKeySequence("Ctrl+O"))
+        self.act_open.setStatusTip("Выбрать папку с файлами (Ctrl+O)")
+        self.act_open.triggered.connect(self._do_select_folder)
+
+        self.act_preview = QAction("&Предпросмотр", self)
+        self.act_preview.setShortcut(QKeySequence("F5"))
+        self.act_preview.setStatusTip("Обновить предпросмотр (F5)")
+        self.act_preview.triggered.connect(self._do_preview)
+
+        self.act_rename = QAction("&Переименовать", self)
+        self.act_rename.setShortcut(QKeySequence("Ctrl+R"))
+        self.act_rename.setStatusTip("Выполнить переименование (Ctrl+R)")
+        self.act_rename.triggered.connect(self._do_rename)
+        self.act_rename.setEnabled(False)
+
+        self.act_exit = QAction("&Выход", self)
+        self.act_exit.setShortcut(QKeySequence("Alt+F4"))
+        self.act_exit.triggered.connect(self.close)
+
+        self.act_light = QAction("&Светлая", self, checkable=True)
+        self.act_dark = QAction("&Тёмная", self, checkable=True)
+        self.act_system = QAction("&Системная", self, checkable=True)
+        self.act_light.triggered.connect(lambda: self._change_theme(ThemeController.LIGHT))
+        self.act_dark.triggered.connect(lambda: self._change_theme(ThemeController.DARK))
+        self.act_system.triggered.connect(lambda: self._change_theme(ThemeController.SYSTEM))
+
+        self.act_about = QAction("&О программе...", self)
+        self.act_about.triggered.connect(self._do_about)
+
+    def _build_menubar(self) -> None:
+        mb = self.menuBar()
+
+        m_file = mb.addMenu("&Файл")
+        m_file.addAction(self.act_open)
+        m_file.addSeparator()
+        m_file.addAction(self.act_exit)
+
+        m_tools = mb.addMenu("&Инструменты")
+        m_tools.addAction(self.act_preview)
+        m_tools.addAction(self.act_rename)
+
+        m_view = mb.addMenu("&Вид")
+        m_theme = m_view.addMenu("&Тема")
+        m_theme.addAction(self.act_light)
+        m_theme.addAction(self.act_dark)
+        m_theme.addAction(self.act_system)
+
+        m_help = mb.addMenu("&Справка")
+        m_help.addAction(self.act_about)
+
+    def _build_central(self) -> None:
+        root = QWidget()
+        self.setCentralWidget(root)
+
+        layout = QVBoxLayout(root)
+        layout.setContentsMargins(20, 16, 20, 14)
+        layout.setSpacing(10)
+
+        top_line = QFrame()
+        top_line.setObjectName("TopLine")
+        layout.addWidget(top_line)
+
+        title_label = QLabel(APPLICATION_NAME)
+        title_label.setObjectName("TitleLabel")
+        layout.addWidget(title_label)
+
+        subtitle_label = QLabel("Массовое переименование файлов")
+        subtitle_label.setObjectName("SubtitleLabel")
+        layout.addWidget(subtitle_label)
+
+        folder_group = QGroupBox("Папка с файлами")
+        folder_layout = QHBoxLayout(folder_group)
+        folder_layout.setContentsMargins(10, 18, 10, 10)
+        folder_layout.setSpacing(8)
+
+        self.folder_path_edit = QLineEdit()
+        self.folder_path_edit.setReadOnly(True)
+        self.folder_path_edit.setPlaceholderText("Папка не выбрана")
+        folder_layout.addWidget(self.folder_path_edit, stretch=1)
+
+        browse_button = QPushButton("Обзор...")
+        browse_button.clicked.connect(self._do_select_folder)
+        folder_layout.addWidget(browse_button)
+
+        layout.addWidget(folder_group)
+
+        mode_group = QGroupBox("Режим переименования")
+        mode_layout = QVBoxLayout(mode_group)
+        mode_layout.setContentsMargins(10, 18, 10, 10)
+        mode_layout.setSpacing(8)
+
+        self.mode_combo = QComboBox()
+        self.mode_combo.addItems(RENAME_MODES)
+        self.mode_combo.currentTextChanged.connect(self._on_mode_changed)
+        mode_layout.addWidget(self.mode_combo)
+
+        self.params_stack = QStackedWidget()
+        self.params_stack.addWidget(self._build_prefix_params())
+        self.params_stack.addWidget(self._build_suffix_params())
+        self.params_stack.addWidget(self._build_replace_params())
+        self.params_stack.addWidget(self._build_numbering_params())
+        self.params_stack.addWidget(self._build_remove_params())
+        mode_layout.addWidget(self.params_stack)
+
+        layout.addWidget(mode_group)
+
+        preview_group = QGroupBox("Предпросмотр")
+        preview_layout = QVBoxLayout(preview_group)
+        preview_layout.setContentsMargins(10, 18, 10, 10)
+        preview_layout.setSpacing(6)
+
+        self.preview_list = QListWidget()
+        self.preview_list.setMinimumHeight(120)
+        preview_layout.addWidget(self.preview_list)
+
+        self.preview_count_label = QLabel("0 файлов")
+        self.preview_count_label.setObjectName("SubtitleLabel")
+        self.preview_count_label.setAlignment(Qt.AlignRight)
+        preview_layout.addWidget(self.preview_count_label)
+
+        layout.addWidget(preview_group, stretch=1)
+
+        buttons_layout = QHBoxLayout()
+        buttons_layout.setSpacing(8)
+
+        self.preview_button = QPushButton("Предпросмотр")
+        self.preview_button.clicked.connect(self._do_preview)
+        buttons_layout.addWidget(self.preview_button, stretch=1)
+
+        self.rename_button = QPushButton("Переименовать")
+        self.rename_button.setObjectName("AccentButton")
+        self.rename_button.setEnabled(False)
+        self.rename_button.clicked.connect(self._do_rename)
+        buttons_layout.addWidget(self.rename_button, stretch=1)
+
+        layout.addLayout(buttons_layout)
+
+    def _build_prefix_params(self) -> QWidget:
+        w = QWidget()
+        l = QVBoxLayout(w)
+        l.setContentsMargins(0, 0, 0, 0)
+        l.addWidget(QLabel("Префикс:"))
+        self.prefix_edit = QLineEdit()
+        self.prefix_edit.setPlaceholderText("Например: backup_")
+        l.addWidget(self.prefix_edit)
+        return w
+
+    def _build_suffix_params(self) -> QWidget:
+        w = QWidget()
+        l = QVBoxLayout(w)
+        l.setContentsMargins(0, 0, 0, 0)
+        l.addWidget(QLabel("Суффикс (перед расширением):"))
+        self.suffix_edit = QLineEdit()
+        self.suffix_edit.setPlaceholderText("Например: _final")
+        l.addWidget(self.suffix_edit)
+        return w
+
+    def _build_replace_params(self) -> QWidget:
+        w = QWidget()
+        l = QVBoxLayout(w)
+        l.setContentsMargins(0, 0, 0, 0)
+        l.setSpacing(4)
+        l.addWidget(QLabel("Найти:"))
+        self.find_edit = QLineEdit()
+        self.find_edit.setPlaceholderText("Текст для поиска")
+        l.addWidget(self.find_edit)
+        l.addWidget(QLabel("Заменить на:"))
+        self.replace_edit = QLineEdit()
+        self.replace_edit.setPlaceholderText("Текст для замены")
+        l.addWidget(self.replace_edit)
+        return w
+
+    def _build_numbering_params(self) -> QWidget:
+        w = QWidget()
+        l = QVBoxLayout(w)
+        l.setContentsMargins(0, 0, 0, 0)
+        l.setSpacing(4)
+        l.addWidget(QLabel("Начальный номер:"))
+        self.start_spin = QSpinBox()
+        self.start_spin.setRange(0, 999999)
+        self.start_spin.setValue(1)
+        l.addWidget(self.start_spin)
+        l.addWidget(QLabel("Формат номера:"))
+        self.format_edit = QLineEdit()
+        self.format_edit.setText("001")
+        l.addWidget(self.format_edit)
+        return w
+
+    def _build_remove_params(self) -> QWidget:
+        w = QWidget()
+        l = QVBoxLayout(w)
+        l.setContentsMargins(0, 0, 0, 0)
+        l.setSpacing(4)
+        l.addWidget(QLabel("Удалить с позиции (начиная с 1):"))
+        self.start_pos_spin = QSpinBox()
+        self.start_pos_spin.setRange(1, 999)
+        self.start_pos_spin.setValue(1)
+        l.addWidget(self.start_pos_spin)
+        l.addWidget(QLabel("Удалить до позиции:"))
+        self.end_pos_spin = QSpinBox()
+        self.end_pos_spin.setRange(1, 999)
+        self.end_pos_spin.setValue(5)
+        l.addWidget(self.end_pos_spin)
+        return w
+
+    def _build_statusbar(self) -> None:
+        sb = QStatusBar()
+        self.setStatusBar(sb)
+        self.status_label = QLabel("")
+        sb.addWidget(self.status_label, 1)
+
+    def _restore_geometry(self) -> None:
+        geom = self.qsettings.value("geometry")
+        maximized = self.qsettings.value("maximized", False, type=bool)
+        if geom:
+            self.restoreGeometry(geom)
+        else:
+            self.resize(680, 640)
+            self._center_on_screen()
+        if maximized:
+            self.showMaximized()
+
+    def _center_on_screen(self) -> None:
+        screen = QApplication.primaryScreen()
+        if screen:
+            center = screen.availableGeometry().center()
+            fg = self.frameGeometry()
+            fg.moveCenter(center)
+            self.move(fg.topLeft())
+
+    def _apply_theme(self) -> None:
+        app = QApplication.instance()
+        if app:
+            ThemeController.apply_theme(app, self.theme)
+
+    def _sync_theme_actions(self) -> None:
+        self.act_light.setChecked(self.theme == ThemeController.LIGHT)
+        self.act_dark.setChecked(self.theme == ThemeController.DARK)
+        self.act_system.setChecked(self.theme == ThemeController.SYSTEM)
+
+    def _change_theme(self, theme: str) -> None:
+        self.theme = theme
+        self.qsettings.setValue("theme", theme)
+        self._apply_theme()
+        self._sync_theme_actions()
+
+    def _on_mode_changed(self) -> None:
+        mode = self.mode_combo.currentText()
+        index = RENAME_MODES.index(mode)
+        self.params_stack.setCurrentIndex(index)
+        if self.current_folder:
+            self._do_preview()
+
+    def _get_params(self) -> dict:
+        mode = self.mode_combo.currentText()
+        params = {}
+        if mode == "Добавить префикс":
+            params["prefix"] = self.prefix_edit.text()
+        elif mode == "Добавить суффикс":
+            params["suffix"] = self.suffix_edit.text()
+        elif mode == "Заменить текст":
+            params["find"] = self.find_edit.text()
+            params["replace"] = self.replace_edit.text()
+        elif mode == "Нумерация":
+            params["start"] = self.start_spin.value()
+            params["format"] = self.format_edit.text()
+        elif mode == "Удалить символы":
+            params["start_pos"] = self.start_pos_spin.value()
+            params["end_pos"] = self.end_pos_spin.value()
+        return params
+
+    def _do_select_folder(self) -> None:
+        folder = QFileDialog.getExistingDirectory(self, "Выберите папку с файлами")
+        if folder:
+            self.current_folder = folder
+            self.folder_path_edit.setText(folder)
+            self.files = RenameLogic.scan_files(folder)
+            self.status_label.setText(f"Найдено файлов: {len(self.files)}")
+            self._do_preview()
+
+    def _do_preview(self) -> None:
+        if not self.current_folder:
+            QMessageBox.warning(self, "Предупреждение", "Сначала выберите папку.")
+            return
+
+        self.files = RenameLogic.scan_files(self.current_folder)
+        mode = self.mode_combo.currentText()
+        params = self._get_params()
+
+        self.preview_list.clear()
+        self.preview_data = []
+
+        for idx, old_name in enumerate(self.files):
+            new_name = RenameLogic.get_new_name(old_name, mode, params, idx)
+            self.preview_data.append((old_name, new_name))
+            self.preview_list.addItem(f"{old_name}  →  {new_name}")
+
+        self.preview_count_label.setText(f"{len(self.files)} файлов")
+        self.rename_button.setEnabled(len(self.files) > 0)
+        self.act_rename.setEnabled(len(self.files) > 0)
+        self.status_label.setText(f"Предпросмотр: {len(self.files)} файлов")
+
+    def _do_rename(self) -> None:
+        if not self.preview_data:
+            QMessageBox.warning(self, "Предупреждение", "Сначала выполните предпросмотр.")
+            return
+
+        reply = QMessageBox.question(
+            self, "Подтверждение",
+            f"Переименовать {len(self.files)} файлов?",
+            QMessageBox.Yes | QMessageBox.No,
+            QMessageBox.No,
+        )
+        if reply != QMessageBox.Yes:
+            return
+
+        renamed, errors = RenameLogic.rename_files(self.current_folder, self.preview_data)
+        self.status_label.setText(f"Переименовано: {renamed}, ошибок: {errors}")
 
         if renamed > 0:
-            self.scan_files()
-            self.preview()
-        else:
-            messagebox.showinfo("Результат", "Нет файлов для переименования")
+            self.files = RenameLogic.scan_files(self.current_folder)
+            self._do_preview()
 
-    def update_status(self, message, is_error=False, is_success=False):
-        self.status_label.config(text=message)
-        if is_error:
-            self.status_label.config(fg=self.colors['error'])
-            self.status_emoji.config(text="❌", fg=self.colors['error'])
-        elif is_success:
-            self.status_label.config(fg=self.colors['accent'])
-            self.status_emoji.config(text="✅", fg=self.colors['accent'])
-        else:
-            self.status_label.config(fg=self.colors['fg'])
-            self.status_emoji.config(text="🔄", fg=self.colors['warning'])
+    def _do_about(self) -> None:
+        QMessageBox.about(
+            self,
+            f"О программе {APPLICATION_NAME}",
+            f"{APPLICATION_NAME}  {APPLICATION_VERSION}\n\n"
+            "Массовое переименование файлов.\n"
+            "Режимы: префикс, суффикс, замена, нумерация, удаление символов.\n\n"
+            f"© 2026 {ORGANIZATION_NAME}",
+        )
+
+    def closeEvent(self, event) -> None:
+        self.qsettings.setValue("geometry", self.saveGeometry())
+        self.qsettings.setValue("maximized", self.isMaximized())
+        event.accept()
 
 
-def main():
-    root = tk.Tk()
-    app = DanrexRenamer(root)
-    root.mainloop()
+def main() -> None:
+    app = QApplication(sys.argv)
+    app.setOrganizationName(ORGANIZATION_NAME)
+    app.setApplicationName(APPLICATION_NAME)
+    if sys.platform == "win32":
+        app.setStyle(QStyleFactory.create("windowsvista"))
+    else:
+        app.setStyle(QStyleFactory.create("Fusion"))
+    app.setFont(QFont(FONT_FAMILY, BASE_FONT_SIZE))
+    window = DanrexRenamerWindow()
+    window.show()
+    sys.exit(app.exec())
 
 
 if __name__ == "__main__":
